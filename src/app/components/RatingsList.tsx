@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-interface TeamRating {
-  teamId: number;
-  teamName: string;
-  rating: number;
-}
+import { TeamRating } from '@/types/database';
 
 const RatingsList: React.FC = () => {
   const [ratings, setRatings] = useState<TeamRating[]>([]);
@@ -35,6 +30,7 @@ const RatingsList: React.FC = () => {
     setIsUpdating(false);
   };
 
+  console.log('Ratings:', ratings);
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">LCK Team Ratings</h1>
@@ -57,9 +53,9 @@ const RatingsList: React.FC = () => {
         </thead>
         <tbody>
           {ratings.map((team, index) => (
-            <tr key={team.teamId} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+            <tr key={team.team_id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
               <td className="px-4 py-2">{index + 1}</td>
-              <td className="px-4 py-2">{team.teamName}</td>
+              <td className="px-4 py-2">{team.team_name}</td>
               <td className="px-4 py-2">{team.rating}</td>
             </tr>
           ))}

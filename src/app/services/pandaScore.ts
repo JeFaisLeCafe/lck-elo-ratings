@@ -16,6 +16,7 @@ export async function fetchLCKMatches(page = 1, perPage = 100) {
         'Authorization': `Bearer ${PANDASCORE_API_KEY}`
       }
     });
+    console.log('PandaScore API response:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('Error fetching LCK matches:', error);

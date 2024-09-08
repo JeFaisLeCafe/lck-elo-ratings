@@ -1,4 +1,5 @@
-import { getRatings, updateRating } from '@/app/services/database';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getLastUpdated, getRatings, updateLastUpdated, updateRating } from '@/app/services/database';
 import { calculateNewRatings } from '@/app/services/eloRating';
 import { fetchLCKMatches } from '@/app/services/pandaScore';
 import { NextApiRequest, NextApiResponse } from 'next';
@@ -7,19 +8,23 @@ import { NextApiRequest, NextApiResponse } from 'next';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
+      console.log('Getting last updated date...');
+      const lastUpdated = await getLastUpdated();
+      console.log(`Last updated: ${lastUpdated}`);
+
       console.log('Fetching LCK matches...');
-      const matches = await fetchLCKMatches();
+      const matches = await fetchLCKMatches(lastUpdated || undefined);
       console.log(`Fetched ${matches.length} matches`);
 
       console.log('Getting current ratings...');
       const currentRatings = await getRatings();
       console.log(`Got ${currentRatings.length} current ratings`);
 
-      for (const match of matches) {
-        console.log('Processing match:', JSON.stringify(match, null, 2));
+      let latestMatchDate = lastUpdated || new Date(0);
 
+      for (const match of matches) {
         if (!match.opponents || match.opponents.length < 2) {
-          console.log('Skipping match due to insufficient opponent data');
+          console.log('Skipping match due to insufficient opponent data', match.id);
           continue;
         }
 
@@ -27,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const teamB = match.opponents[1]?.opponent;
 
         if (!teamA || !teamB) {
-          console.log('Skipping match due to missing team data');
+          console.log('Skipping match due to missing team data', match.id);
           continue;
         }
 
@@ -38,10 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const teamAWon = match.winner_id === teamA.id;
           const [newRatingA, newRatingB] = calculateNewRatings(teamARating.rating, teamBRating.rating, teamAWon);
 
-          console.log(`Updating rating for ${teamA.name}: ${teamARating.rating} -> ${newRatingA}`);
           await updateRating(teamA.id, teamA.name, newRatingA);
 
-          console.log(`Updating rating for ${teamB.name}: ${teamBRating.rating} -> ${newRatingB}`);
           await updateRating(teamB.id, teamB.name, newRatingB);
         } else {
           if (!teamARating) {
@@ -53,11 +56,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await updateRating(teamB.id, teamB.name, 1500);
           }
         }
+
+        const matchDate = new Date(match.begin_at);
+        if (matchDate > latestMatchDate) {
+          latestMatchDate = matchDate;
+        }
       }
 
-      res.status(200).json({ message: 'Ratings updated successfully' });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error : any) {
+      // Update the last updated date
+      await updateLastUpdated(latestMatchDate);
+
+      res.status(200).json({ message: 'Ratings updated successfully', lastUpdated: latestMatchDate });
+    } catch (error: any) {
       console.error('Failed to update ratings:', error);
       res.status(500).json({ error: 'Failed to update ratings', details: error.message });
     }

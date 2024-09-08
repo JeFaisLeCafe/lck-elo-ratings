@@ -3,3 +3,7 @@ export interface TeamRating {
     team_name: string;
     rating: number;
 }
+
+export interface LastUpdated {
+  last_updated: Date;
+}
